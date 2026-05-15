@@ -1,0 +1,36 @@
+services:
+  korobas:
+    build:
+      context: .
+      dockerfile: Dockerfile.core
+      args:
+        KOROBAS_UID: 1000
+        KOROBAS_GID: 1000
+    container_name: korobas
+    hostname: korobas
+    image: ghcr.io/psauxwwf/korobas:latest
+    init: true
+    restart: unless-stopped
+    environment:
+      KOROBAS_AUTHORIZED_KEYS: ${KOROBAS_AUTHORIZED_KEYS:-}
+      KOROBAS_PASSWORD: korobas
+    volumes:
+      - ./korobas:/home/korobas:Z
+    networks:
+      korobas:
+        ipv4_address: 172.19.100.2
+    cap_add:
+      - NET_ADMIN
+    stop_grace_period: 10s
+
+networks:
+  korobas:
+    driver: bridge
+    name: korobas
+    ipam:
+      config:
+        - subnet: 172.19.100.0/24
+          gateway: 172.19.100.1
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.name: br-korobas

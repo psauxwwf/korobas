@@ -1,0 +1,61 @@
+FROM debian:13
+
+ARG KOROBAS_UID=1000
+ARG KOROBAS_GID=1000
+
+USER root
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+        curl \
+        ca-certificates \
+        gosu \
+        libatomic1 \
+        openssh-server \
+        sudo \
+        zsh \
+        stow \
+        git \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN groupadd --gid "${KOROBAS_GID}" korobas \
+    && useradd --uid "${KOROBAS_UID}" --gid korobas --create-home --shell /bin/zsh korobas \
+    && usermod --append --groups sudo korobas \
+    && printf 'korobas ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/korobas \
+    && chmod 0440 /etc/sudoers.d/korobas
+
+RUN curl -fsSL https://mise.run -o /tmp/install-mise.sh \
+    && MISE_INSTALL_PATH=/usr/local/bin/mise sh /tmp/install-mise.sh \
+    && rm -f /tmp/install-mise.sh
+
+# ENV MISE_CONFIG_DIR=/etc/mise
+# ENV MISE_DATA_DIR=/home/korobas/.local/share/mise
+# ENV MISE_SYSTEM_DATA_DIR=/usr/local/share/mise
+# ENV MISE_CACHE_DIR=/home/korobas/.cache/mise
+# ENV MISE_STATE_DIR=/home/korobas/.local/state/mise
+# ENV MISE_HTTP_TIMEOUT=120
+# ENV MISE_JOBS=1
+ENV PATH="/home/korobas/.local/share/mise/shims:/usr/local/share/mise/shims:${PATH}"
+
+RUN install -d -m 0755 /usr/local/share/korobas-home \
+    && git clone --branch no-gui --single-branch --depth 1 https://github.com/psauxwwf/.dotfiles.git /usr/local/share/korobas-home/.dotfiles
+
+COPY entypoint.sh /usr/local/bin/entypoint.sh
+
+COPY sshd_config /etc/ssh/sshd_config
+
+RUN chmod 0755 /usr/local/bin/entypoint.sh \
+    && chmod 0644 /etc/ssh/sshd_config
+
+WORKDIR /home/korobas
+
+EXPOSE 22
+
+ENTRYPOINT ["/usr/local/bin/entypoint.sh"]
+
+CMD ["sleep", "infinity"]
