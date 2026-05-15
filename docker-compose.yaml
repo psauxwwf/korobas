@@ -14,6 +14,8 @@ services:
     environment:
       KOROBAS_AUTHORIZED_KEYS: ${KOROBAS_AUTHORIZED_KEYS:-}
       KOROBAS_PASSWORD: korobas
+      KOROBAS_SSH_ENABLED: ${KOROBAS_SSH_ENABLED:-true}
+      KOROBAS_XRDP_ENABLED: ${KOROBAS_XRDP_ENABLED:-true}
     volumes:
       - ./korobas:/home/korobas:Z
     networks:

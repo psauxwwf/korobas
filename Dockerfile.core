@@ -1,4 +1,5 @@
-FROM debian:13
+# FROM debian:13
+FROM scottyhardy/docker-remote-desktop:latest
 
 ARG KOROBAS_UID=1000
 ARG KOROBAS_GID=1000
@@ -8,6 +9,8 @@ USER root
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
+ENV GOPATH=/home/korobas/.go
+ENV EDITOR=hx
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
@@ -21,6 +24,9 @@ RUN apt-get update \
         stow \
         git \
         build-essential \
+        iproute2 \
+        procps \
+        torbrowser-launcher \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN groupadd --gid "${KOROBAS_GID}" korobas \
@@ -40,7 +46,10 @@ RUN curl -fsSL https://mise.run -o /tmp/install-mise.sh \
 # ENV MISE_STATE_DIR=/home/korobas/.local/state/mise
 # ENV MISE_HTTP_TIMEOUT=120
 # ENV MISE_JOBS=1
-ENV PATH="/home/korobas/.local/share/mise/shims:/usr/local/share/mise/shims:${PATH}"
+ENV PATH="/home/korobas/.go/bin:\
+/home/korobas/.local/bin:\
+/home/korobas/.local/share/mise/shims:\
+/usr/local/share/mise/shims:${PATH}"
 
 RUN install -d -m 0755 /usr/local/share/korobas-home \
     && git clone --branch no-gui --single-branch --depth 1 https://github.com/psauxwwf/.dotfiles.git /usr/local/share/korobas-home/.dotfiles
@@ -54,7 +63,7 @@ RUN chmod 0755 /usr/local/bin/entypoint.sh \
 
 WORKDIR /home/korobas
 
-EXPOSE 22
+EXPOSE 3389 22
 
 ENTRYPOINT ["/usr/local/bin/entypoint.sh"]
 
