@@ -63,17 +63,17 @@ ENV PATH="/home/korobas/.go/bin:\
 /home/korobas/.local/share/mise/shims:\
 /usr/local/share/mise/shims:${PATH}"
 
-COPY entypoint.sh /usr/local/bin/entypoint.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
 COPY sshd_config /etc/ssh/sshd_config
 
-RUN chmod 0755 /usr/local/bin/entypoint.sh \
+RUN chmod 0755 /usr/local/bin/entrypoint.sh \
     && chmod 0644 /etc/ssh/sshd_config
 
 WORKDIR /home/korobas
 
 EXPOSE 3389 22
 
-ENTRYPOINT ["/usr/local/bin/entypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 CMD ["sleep", "infinity"]

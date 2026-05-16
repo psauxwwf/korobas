@@ -20,8 +20,8 @@ start_xrdp() {
 
 	image_name="${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}"
 	case "$image_name" in
-		*desktop*) ;;
-		*) return 0 ;;
+	*desktop*) ;;
+	*) return 0 ;;
 	esac
 
 	xrdp_sesman_bin=$(command_path xrdp-sesman "xrdp binaries are missing in the image")
