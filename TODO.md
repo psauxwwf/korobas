@@ -1,2 +1,2 @@
-- [ ] add proxychains
+- [x] add proxychains
 - [ ] run opencode web

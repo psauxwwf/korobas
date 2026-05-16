@@ -38,6 +38,8 @@ RUN set -eux; \
         curl -fsSL https://github.com/throneproj/Throne/releases/download/1.1.2/Throne-1.1.2-debian-amd64-system-qt.deb -o /tmp/throne.deb; \
         apt-get install --yes /tmp/throne.deb; \
     esac; \
+    curl -fsSL https://github.com/psauxwwf/proxychains/releases/latest/download/proxychains.tar.gz -o /tmp/proxychains.tar.gz; \
+    tar -xzf /tmp/proxychains.tar.gz -C /; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN groupadd --gid "${KOROBAS_GID}" korobas \
