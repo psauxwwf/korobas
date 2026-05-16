@@ -24,6 +24,24 @@ tar -xzf korobas.tar.gz
 docker compose up -d
 ```
 
+## .env Examples
+
+`.env` for desktop mode:
+
+```dotenv
+KOROBAS_IMAGE=ghcr.io/psauxwwf/korobas-desktop:latest
+KOROBAS_AUTHORIZED_KEYS=
+KOROBAS_PASSWORD=korobas
+```
+
+`.env` for core mode:
+
+```dotenv
+KOROBAS_IMAGE=ghcr.io/psauxwwf/korobas-core:latest
+KOROBAS_AUTHORIZED_KEYS=
+KOROBAS_PASSWORD=korobas
+```
+
 ## Build And Up
 
 Build the image locally and recreate the container:

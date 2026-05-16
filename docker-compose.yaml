@@ -2,20 +2,21 @@ services:
   korobas:
     build:
       context: .
-      dockerfile: Dockerfile.core
+      dockerfile: Dockerfile
       args:
+        BASE_IMAGE: ${KOROBAS_BASE_IMAGE:-scottyhardy/docker-remote-desktop:latest}
         KOROBAS_UID: 1000
         KOROBAS_GID: 1000
+        KOROBAS_IMAGE: ${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
     container_name: korobas
     hostname: korobas
-    image: ghcr.io/psauxwwf/korobas:latest
+    image: ${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
     init: true
     restart: unless-stopped
     environment:
       KOROBAS_AUTHORIZED_KEYS: ${KOROBAS_AUTHORIZED_KEYS:-}
+      KOROBAS_IMAGE: ${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
       KOROBAS_PASSWORD: korobas
-      KOROBAS_SSH_ENABLED: ${KOROBAS_SSH_ENABLED:-true}
-      KOROBAS_XRDP_ENABLED: ${KOROBAS_XRDP_ENABLED:-true}
     volumes:
       - ./korobas:/home/korobas:Z
     networks:

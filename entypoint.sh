@@ -4,10 +4,6 @@ set -eu
 home_dir=/home/korobas
 dotfiles_dir="$home_dir/.dotfiles"
 bootstrap_marker="$home_dir/.local/state/korobas/mise-bootstrap-done"
-ssh_enabled="${KOROBAS_SSH_ENABLED:-true}"
-xrdp_enabled="${KOROBAS_XRDP_ENABLED:-true}"
-dotfiles_repo=https://github.com/psauxwwf/.dotfiles.git
-dotfiles_branch=no-gui
 dotfiles_changed=false
 
 die() {
@@ -15,18 +11,18 @@ die() {
 	exit "${2:-1}"
 }
 
-require_command() {
-	command -v "$1" >/dev/null 2>&1 || die "$2" 127
-}
-
 command_path() {
 	command -v "$1" 2>/dev/null || die "$2" 127
 }
 
 start_xrdp() {
-	local xrdp_sesman_bin xrdp_bin
+	local image_name xrdp_sesman_bin xrdp_bin
 
-	[ "$xrdp_enabled" = "true" ] || return 0
+	image_name="${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}"
+	case "$image_name" in
+		*desktop*) ;;
+		*) return 0 ;;
+	esac
 
 	xrdp_sesman_bin=$(command_path xrdp-sesman "xrdp binaries are missing in the image")
 	xrdp_bin=$(command_path xrdp "xrdp binaries are missing in the image")
@@ -38,6 +34,8 @@ start_xrdp() {
 }
 
 add_authorized_keys() {
+	local authorized_keys_file
+
 	[ -n "${KOROBAS_AUTHORIZED_KEYS:-}" ] || return 0
 
 	install -d -m 0700 "$home_dir/.ssh"
@@ -53,8 +51,6 @@ add_authorized_keys() {
 
 start_ssh() {
 	local sshd_bin ssh_keygen_bin
-
-	[ "$ssh_enabled" = "true" ] || return 0
 
 	sshd_bin=$(command_path sshd "OpenSSH binaries are missing in the image")
 	ssh_keygen_bin=$(command_path ssh-keygen "OpenSSH binaries are missing in the image")
@@ -82,7 +78,7 @@ current_dotfiles_revision() {
 
 clone_dotfiles() {
 	rm -rf "$dotfiles_dir"
-	git clone --branch "$dotfiles_branch" --single-branch --depth 1 "$dotfiles_repo" "$dotfiles_dir"
+	git clone --branch no-gui --single-branch --depth 1 https://github.com/psauxwwf/.dotfiles.git "$dotfiles_dir"
 }
 
 sync_dotfiles() {
@@ -95,10 +91,7 @@ sync_dotfiles() {
 		before_revision=$(current_dotfiles_revision)
 		git -C "$dotfiles_dir" pull --ff-only
 		after_revision=$(current_dotfiles_revision)
-
-		if [ "$before_revision" != "$after_revision" ]; then
-			dotfiles_changed=true
-		fi
+		[ "$before_revision" = "$after_revision" ] || dotfiles_changed=true
 	fi
 
 	stow -d "$dotfiles_dir" -t "$home_dir" .

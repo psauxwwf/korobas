@@ -1,11 +1,38 @@
 version: "3"
 
-dotenv: ["build.env"]
-
 env:
   COMPOSE_BAKE: true
 
 tasks:
+  build:
+    desc: build desktop and core images
+    cmds:
+      - task: build:desktop
+      - task: build:core
+
+  push:
+    desc: build and push images
+    cmds:
+      - task: build
+      - docker push ghcr.io/psauxwwf/korobas-core:latest
+      - docker push ghcr.io/psauxwwf/korobas-desktop:latest
+
+  build:desktop:
+    desc: build desktop image with xrdp
+    env:
+      KOROBAS_BASE_IMAGE: scottyhardy/docker-remote-desktop:latest
+      KOROBAS_IMAGE: ghcr.io/psauxwwf/korobas-desktop:latest
+    cmds:
+      - docker compose build
+
+  build:core:
+    desc: build core image without xrdp
+    env:
+      KOROBAS_BASE_IMAGE: debian:13
+      KOROBAS_IMAGE: ghcr.io/psauxwwf/korobas-core:latest
+    cmds:
+      - docker compose build
+
   up:
     desc: rebuild and up container
     cmds:

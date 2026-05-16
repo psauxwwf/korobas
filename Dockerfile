@@ -1,8 +1,9 @@
-# FROM debian:13
-FROM scottyhardy/docker-remote-desktop:latest
+ARG BASE_IMAGE=scottyhardy/docker-remote-desktop:latest
+FROM ${BASE_IMAGE}
 
 ARG KOROBAS_UID=1000
 ARG KOROBAS_GID=1000
+ARG KOROBAS_IMAGE=ghcr.io/psauxwwf/korobas-desktop:latest
 
 USER root
 
@@ -11,9 +12,11 @@ ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV GOPATH=/home/korobas/.go
 ENV EDITOR=hx
+ENV KOROBAS_IMAGE=${KOROBAS_IMAGE}
 
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends \
+RUN set -eux; \
+    apt-get update; \
+    set -- \
         curl \
         ca-certificates \
         gosu \
@@ -26,10 +29,16 @@ RUN apt-get update \
         build-essential \
         iproute2 \
         procps \
-        torbrowser-launcher \
-    && curl -fsSL https://github.com/throneproj/Throne/releases/download/1.1.2/Throne-1.1.2-debian-amd64-system-qt.deb -o /tmp/throne.deb \
-    && apt-get install --yes /tmp/throne.deb \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        fzf; \
+    case "$KOROBAS_IMAGE" in *desktop*) \
+        set -- "$@" torbrowser-launcher; \
+    esac; \
+    apt-get install --yes --no-install-recommends "$@"; \
+    case "$KOROBAS_IMAGE" in *desktop*) \
+        curl -fsSL https://github.com/throneproj/Throne/releases/download/1.1.2/Throne-1.1.2-debian-amd64-system-qt.deb -o /tmp/throne.deb; \
+        apt-get install --yes /tmp/throne.deb; \
+    esac; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN groupadd --gid "${KOROBAS_GID}" korobas \
     && usermod --shell /bin/bash root \
