@@ -8,7 +8,7 @@
 - Validate image changes with `docker build -f Dockerfile.core .`.
 - Validate Compose syntax with `docker compose config`.
 - Validate the entrypoint script with `sh -n entypoint.sh`.
-- Only run `docker compose up --build` when the user explicitly wants the container started or rebuilt end-to-end.
+- Do not run `docker compose up` or `docker compose up --build` unless the user explicitly asks to start or rebuild the container end-to-end.
 
 # Runtime Wiring
 
@@ -29,7 +29,7 @@
 
 - Active `mise` config is not in the repo root. It lives in `korobas/.dotfiles/.config/mise/`.
 - The repo does contain `korobas/.dotfiles`; those files are what the bind-mounted home exposes in the container.
-- `Dockerfile.core` clones template dotfiles into `/usr/local/share/korobas-home/.dotfiles`, but `entypoint.sh` only copies them when the mounted home does not already contain `.dotfiles`.
+- Do not run `mise` commands unless the user explicitly permits it.
 - `korobas/.dotfiles/.config/mise/config.toml` defines the repo-relevant `mise` tasks: `mise run install`, `mise run pip`, `mise run golang`, `mise run npm`, and `mise run prune`.
 - `mise run install` no longer installs OS packages; it currently chains only `wget`, `pip`, `golang`, and `npm` tasks. Verify the actual task file before describing `mise` behavior.
 

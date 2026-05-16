@@ -27,9 +27,12 @@ RUN apt-get update \
         iproute2 \
         procps \
         torbrowser-launcher \
+    && curl -fsSL https://github.com/throneproj/Throne/releases/download/1.1.2/Throne-1.1.2-debian-amd64-system-qt.deb -o /tmp/throne.deb \
+    && apt-get install --yes /tmp/throne.deb \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN groupadd --gid "${KOROBAS_GID}" korobas \
+    && usermod --shell /bin/bash root \
     && useradd --uid "${KOROBAS_UID}" --gid korobas --create-home --shell /bin/zsh korobas \
     && usermod --append --groups sudo korobas \
     && printf 'korobas ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/korobas \
@@ -50,9 +53,6 @@ ENV PATH="/home/korobas/.go/bin:\
 /home/korobas/.local/bin:\
 /home/korobas/.local/share/mise/shims:\
 /usr/local/share/mise/shims:${PATH}"
-
-RUN install -d -m 0755 /usr/local/share/korobas-home \
-    && git clone --branch no-gui --single-branch --depth 1 https://github.com/psauxwwf/.dotfiles.git /usr/local/share/korobas-home/.dotfiles
 
 COPY entypoint.sh /usr/local/bin/entypoint.sh
 

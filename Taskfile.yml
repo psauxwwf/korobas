@@ -1,0 +1,12 @@
+version: "3"
+
+dotenv: ["build.env"]
+
+env:
+  COMPOSE_BAKE: true
+
+tasks:
+  up:
+    desc: rebuild and up container
+    cmds:
+      - docker compose up --force-recreate --build
