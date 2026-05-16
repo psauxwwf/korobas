@@ -10,3 +10,12 @@ tasks:
     desc: rebuild and up container
     cmds:
       - docker compose up --force-recreate --build
+
+  release:
+    desc: package and publish github release
+    cmds:
+      - rm -f korobas.tar.gz
+      - tar -I 'pigz -9 -p$(nproc)' -cf korobas.tar.gz docker-compose.yaml korobas
+      - |
+        TAG=$(date +v%m.%d.%H)
+        gh release create "$TAG" korobas.tar.gz

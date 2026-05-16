@@ -2,11 +2,13 @@
 set -eu
 
 home_dir=/home/korobas
+dotfiles_dir="$home_dir/.dotfiles"
 bootstrap_marker="$home_dir/.local/state/korobas/mise-bootstrap-done"
 ssh_enabled="${KOROBAS_SSH_ENABLED:-true}"
 xrdp_enabled="${KOROBAS_XRDP_ENABLED:-true}"
 dotfiles_repo=https://github.com/psauxwwf/.dotfiles.git
 dotfiles_branch=no-gui
+dotfiles_changed=false
 
 die() {
 	echo "$1" >&2
@@ -45,7 +47,7 @@ add_authorized_keys() {
 
 	printf '%b\n' "${KOROBAS_AUTHORIZED_KEYS}" | while IFS= read -r pubkey || [ -n "$pubkey" ]; do
 		[ -n "$pubkey" ] || continue
-		grep -Fqx -- "$pubkey" "$authorized_keys_file" || printf '%s\n' "$pubkey" >> "$authorized_keys_file"
+		grep -Fqx -- "$pubkey" "$authorized_keys_file" || printf '%s\n' "$pubkey" >>"$authorized_keys_file"
 	done
 }
 
@@ -74,16 +76,38 @@ prepare_home() {
 		"$home_dir/.local/share/mise"
 }
 
-ensure_dotfiles() {
-	if [ ! -d "$home_dir/.dotfiles" ]; then
-		git clone --branch "$dotfiles_branch" --single-branch --depth 1 "$dotfiles_repo" "$home_dir/.dotfiles"
+current_dotfiles_revision() {
+	git -C "$dotfiles_dir" rev-parse HEAD 2>/dev/null || true
+}
+
+clone_dotfiles() {
+	rm -rf "$dotfiles_dir"
+	git clone --branch "$dotfiles_branch" --single-branch --depth 1 "$dotfiles_repo" "$dotfiles_dir"
+}
+
+sync_dotfiles() {
+	local before_revision after_revision
+
+	if [ ! -d "$dotfiles_dir/.git" ]; then
+		clone_dotfiles
+		dotfiles_changed=true
+	else
+		before_revision=$(current_dotfiles_revision)
+		git -C "$dotfiles_dir" pull --ff-only
+		after_revision=$(current_dotfiles_revision)
+
+		if [ "$before_revision" != "$after_revision" ]; then
+			dotfiles_changed=true
+		fi
 	fi
 
-	stow -d "$home_dir/.dotfiles" -t "$home_dir" .
+	stow -d "$dotfiles_dir" -t "$home_dir" .
 }
 
 bootstrap_mise() {
-	[ ! -f "$bootstrap_marker" ] || return 0
+	if [ -f "$bootstrap_marker" ] && [ "$dotfiles_changed" != "true" ]; then
+		return 0
+	fi
 
 	mise install --jobs=1
 	mise run install --jobs=1
@@ -103,7 +127,7 @@ run_root_phase() {
 
 run_user_phase() {
 	prepare_home
-	ensure_dotfiles
+	sync_dotfiles
 	bootstrap_mise
 
 	if [ -z "${1:-}" ]; then
