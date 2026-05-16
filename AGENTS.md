@@ -1,44 +1,46 @@
 # Scope
 
-- This repo is only a Dockerized `korobas` environment. The source-of-truth files are `Dockerfile.core`, `docker-compose.yaml`, `entypoint.sh`, and `sshd_config`.
+- This repo is only the Dockerized `korobas` environment. The executable sources of truth are `Dockerfile`, `docker-compose.yaml`, `entrypoint.sh`, `sshd_config`, and `Taskfile.yml`.
 - There is no app source tree, CI workflow, formatter config, or repo-local test suite. Do not invent `npm test`, `pytest`, or similar checks here.
 
 # Verified Commands
 
-- Validate image changes with `docker build -f Dockerfile.core .`.
-- Validate Compose syntax with `docker compose config`.
-- Validate the entrypoint script with `sh -n entypoint.sh`.
-- Do not run `docker compose up` or `docker compose up --build` unless the user explicitly asks to start or rebuild the container end-to-end.
+- Validate Compose config with `docker compose config`.
+- Validate the entrypoint script with `sh -n entrypoint.sh`.
+- Build the desktop image with `task build:desktop`.
+- Build the core image with `task build:core`.
+- Do not run `docker compose up` or `task up` unless the user explicitly asks to start or rebuild the container end-to-end.
 
-# Runtime Wiring
+# Wiring That Matters
 
-- Compose runs one service, `korobas`, from `Dockerfile.core` and bind-mounts `./korobas` to `/home/korobas`.
-- Because `/home/korobas` is a bind mount, edits under `korobas/` affect the running container directly; changes to image-level files still require rebuilds.
-- `entypoint.sh` starts as `root`, generates SSH host keys, applies `KOROBAS_PASSWORD`, optionally appends `KOROBAS_AUTHORIZED_KEYS` into `/home/korobas/.ssh/authorized_keys`, then drops to `korobas` via `gosu`.
-- The long-running container process is still `CMD ["sleep", "infinity"]`; `entypoint.sh` is bootstrap, not the final workload.
+- Compose runs a single service, `korobas`, and bind-mounts `./korobas` to `/home/korobas`.
+- Changes under `korobas/` affect the mounted home directly. Changes to `Dockerfile`, `entrypoint.sh`, `sshd_config`, or Compose config require rebuilds.
+- `entrypoint.sh` runs as `root`, starts SSH unconditionally, appends `KOROBAS_AUTHORIZED_KEYS` when provided, then drops to user `korobas` via `gosu`.
+- The long-running process is still `CMD ["sleep", "infinity"]`; the entrypoint is bootstrap only.
 
-# Image Details That Matter
+# Desktop vs Core
+
+- There is no separate `KOROBAS_IMAGE_VARIANT` switch anymore. Desktop vs core is inferred from `KOROBAS_IMAGE`.
+- Any `KOROBAS_IMAGE` containing `desktop` enables XRDP in both `Dockerfile` and `entrypoint.sh`.
+- The matching base images are:
+  - desktop: `KOROBAS_IMAGE=ghcr.io/psauxwwf/korobas-desktop:latest` with `KOROBAS_BASE_IMAGE=scottyhardy/docker-remote-desktop:latest`
+  - core: `KOROBAS_IMAGE=ghcr.io/psauxwwf/korobas-core:latest` with `KOROBAS_BASE_IMAGE=debian:13`
+- Keep `KOROBAS_IMAGE` and `KOROBAS_BASE_IMAGE` aligned when editing build logic or task definitions.
+
+# Image Details
 
 - The image creates user/group `korobas` from build args `KOROBAS_UID` and `KOROBAS_GID`; Compose pins both to `1000`.
 - The image installs `sudo` and grants `korobas` passwordless sudo via `/etc/sudoers.d/korobas`.
-- `mise` is installed to `/usr/local/bin/mise`, and the image exports `PATH` with `/home/korobas/.local/share/mise/shims`.
-- Locale is forced to UTF-8 in the image and `sshd_config` (`LANG=C.UTF-8`, `LC_ALL=C.UTF-8`) to avoid broken non-ASCII output over SSH.
-- `sshd_config` enables both password and public-key auth. Keep auth changes consistent with both `sshd_config` and `entypoint.sh`.
+- `mise` is installed into `/usr/local/bin/mise`, but its runtime config comes from the bind-mounted home and dotfiles, not from the repo root.
+- `sshd_config` enables both password and public-key auth. If auth behavior changes, keep `sshd_config` and `entrypoint.sh` in sync.
 
-# Dotfiles And Mise
+# Dotfiles And Releases
 
-- Active `mise` config is not in the repo root. It lives in `korobas/.dotfiles/.config/mise/`.
-- The repo does contain `korobas/.dotfiles`; those files are what the bind-mounted home exposes in the container.
-- Do not run `mise` commands unless the user explicitly permits it.
-- `korobas/.dotfiles/.config/mise/config.toml` defines the repo-relevant `mise` tasks: `mise run install`, `mise run pip`, `mise run golang`, `mise run npm`, and `mise run prune`.
-- `mise run install` no longer installs OS packages; it currently chains only `wget`, `pip`, `golang`, and `npm` tasks. Verify the actual task file before describing `mise` behavior.
-
-# Known Stale Docs
-
-- `README.md` still references copying caches into `./opencode/...`; the current bind-mounted home is `./korobas`, so do not repeat the old path.
-- Older instructions that mention a root-level `config.toml`, `/home/opencode`, `OPENCODE_*`, or an `opencode` user are stale for this repo state.
+- The repo does not own the real dotfiles source. `entrypoint.sh` clones `https://github.com/psauxwwf/.dotfiles.git` branch `no-gui` into `/home/korobas/.dotfiles` at runtime and then runs `stow`.
+- `mise install` and `mise run install` are part of the runtime bootstrap. Do not run `mise` commands unless the user explicitly asks.
+- `task release` only archives `docker-compose.yaml` and `korobas/`; it does not package `Dockerfile`, `entrypoint.sh`, or `sshd_config`. Image-level changes need rebuilt/pushed images, not just a new tarball.
 
 # Network And Naming
 
-- Preserve the current image name `ghcr.io/ghcr.io/korobas:latest` unless the user explicitly asks to change publishing coordinates.
-- Compose uses a fixed bridge network named `korobas` with subnet `172.19.100.0/24` and container IP `172.19.100.2`; avoid accidental renames when editing networking.
+- Preserve the fixed bridge network name `korobas`, subnet `172.19.100.0/24`, gateway `172.19.100.1`, and container IP `172.19.100.2` unless the user explicitly wants networking changed.
+- Current image tags are `ghcr.io/psauxwwf/korobas-desktop:latest` and `ghcr.io/psauxwwf/korobas-core:latest`.

@@ -10,7 +10,7 @@ The project is intended to quickly bring up a consistent working environment wit
 - `korobas` user with passwordless `sudo`
 - SSH access into the container
 - RDP access to the remote desktop session
-- bootstrap logic via `entypoint.sh`
+- bootstrap logic via `entrypoint.sh`
 - dotfiles from `https://github.com/psauxwwf/.dotfiles`
 - tools and extra setup via `mise`
 
