@@ -76,6 +76,14 @@ current_dotfiles_revision() {
 	git -C "$dotfiles_dir" rev-parse HEAD 2>/dev/null || true
 }
 
+dotfiles_has_local_changes() {
+	[ -n "$(git -C "$dotfiles_dir" status --porcelain --untracked-files=normal 2>/dev/null)" ]
+}
+
+stash_dotfiles_changes() {
+	git -C "$dotfiles_dir" stash push --include-untracked --message korobas-entrypoint-autostash >/dev/null
+}
+
 clone_dotfiles() {
 	rm -rf "$dotfiles_dir"
 	git clone --branch no-gui --single-branch --depth 1 https://github.com/psauxwwf/.dotfiles.git "$dotfiles_dir"
@@ -89,6 +97,12 @@ sync_dotfiles() {
 		dotfiles_changed=true
 	else
 		before_revision=$(current_dotfiles_revision)
+		if dotfiles_has_local_changes; then
+			printf '%s\n' "Stashing local dotfiles changes in $dotfiles_dir before update" >&2
+			stash_dotfiles_changes
+			dotfiles_changed=true
+		fi
+
 		git -C "$dotfiles_dir" pull --ff-only
 		after_revision=$(current_dotfiles_revision)
 		[ "$before_revision" = "$after_revision" ] || dotfiles_changed=true
