@@ -42,7 +42,7 @@ tasks:
     desc: package and publish github release
     cmds:
       - rm -f korobas.tar.gz
-      - tar -I 'pigz -9 -p$(nproc)' -cf korobas.tar.gz docker-compose.yaml korobas
+      - tar -I 'pigz -9 -p$(nproc)' --exclude='korobas/.proxychains' --exclude='korobas/.local/share/opencode' --exclude='korobas/.env' --exclude='korobas/.cache' --exclude='korobas/.bash_history' -cf korobas.tar.gz docker-compose.yaml korobas
       - |
         TAG=$(date +v%m.%d.%H)
         gh release create "$TAG" korobas.tar.gz

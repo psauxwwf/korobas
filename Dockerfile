@@ -45,9 +45,7 @@ RUN set -eux; \
 RUN groupadd --gid "${KOROBAS_GID}" korobas \
     && usermod --shell /bin/bash root \
     && useradd --uid "${KOROBAS_UID}" --gid korobas --create-home --shell /bin/zsh korobas \
-    && usermod --append --groups sudo korobas \
-    && printf 'korobas ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/korobas \
-    && chmod 0440 /etc/sudoers.d/korobas
+    && usermod --append --groups sudo korobas
 
 RUN curl -fsSL https://mise.run -o /tmp/install-mise.sh \
     && MISE_INSTALL_PATH=/usr/local/bin/mise sh /tmp/install-mise.sh \
@@ -69,8 +67,11 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
 COPY sshd_config /etc/ssh/sshd_config
 
+COPY sudoers_korobas /etc/sudoers.d/korobas
+
 RUN chmod 0755 /usr/local/bin/entrypoint.sh \
-    && chmod 0644 /etc/ssh/sshd_config
+    && chmod 0644 /etc/ssh/sshd_config \
+    && chmod 0440 /etc/sudoers.d/korobas
 
 WORKDIR /home/korobas
 

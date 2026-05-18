@@ -1,0 +1,6 @@
+*
+!.dockerignore
+!Dockerfile
+!entrypoint.sh
+!sshd_config
+!sudoers_korobas

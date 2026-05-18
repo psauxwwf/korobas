@@ -108,7 +108,7 @@ sync_dotfiles() {
 		[ "$before_revision" = "$after_revision" ] || dotfiles_changed=true
 	fi
 
-	stow -d "$dotfiles_dir" -t "$home_dir" .
+	stow -d "$dotfiles_dir" -t "$home_dir" --no-folding --verbose=1 .
 }
 
 bootstrap_mise() {
@@ -119,6 +119,24 @@ bootstrap_mise() {
 	mise install --jobs=1
 	mise run install --jobs=1
 	touch "$bootstrap_marker"
+}
+
+start_opencode() {
+	local host port cors
+
+	[ "${KOROBAS_OPENCODE:-true}" = "true" ] || return 0
+
+	host="${OPENCODE_HOST:-0.0.0.0}"
+	port="${OPENCODE_PORT:-8000}"
+	cors="${OPENCODE_CORS:-}"
+	OPENCODE_HOST="$host" OPENCODE_PORT="$port" OPENCODE_CORS="$cors"
+	# zsh -lic '
+	zsh -lc '
+			command -v opencode >/dev/null 2>&1 || exit 127
+			cmd=(opencode web "--hostname=$OPENCODE_HOST" "--port=$OPENCODE_PORT")
+			[[ -n "$OPENCODE_CORS" ]] && cmd+=("--cors=$OPENCODE_CORS")
+			exec "${cmd[@]}"
+		' &
 }
 
 run_as_korobas() {
@@ -136,6 +154,7 @@ run_user_phase() {
 	prepare_home
 	sync_dotfiles
 	bootstrap_mise
+	start_opencode
 
 	if [ -z "${1:-}" ]; then
 		exec sleep infinity

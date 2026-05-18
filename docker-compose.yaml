@@ -16,7 +16,14 @@ services:
     environment:
       KOROBAS_AUTHORIZED_KEYS: ${KOROBAS_AUTHORIZED_KEYS:-}
       KOROBAS_IMAGE: ${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
+      KOROBAS_OPENCODE: ${KOROBAS_OPENCODE:-true}
       KOROBAS_PASSWORD: korobas
+      OPENCODE_CORS: ${OPENCODE_CORS:-http://127.0.0.1:8000,http://172.19.100.2:8000}
+      OPENCODE_HOST: ${OPENCODE_HOST:-0.0.0.0}
+      OPENCODE_PORT: ${OPENCODE_PORT:-8000}
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:-korobas}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-korobas}
+      OPENCODE_PROXY: ${OPENCODE_PROXY:-false}
     volumes:
       - ./korobas:/home/korobas:Z
     networks:
