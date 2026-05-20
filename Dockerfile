@@ -29,6 +29,7 @@ RUN set -eux; \
         build-essential \
         iproute2 \
         procps \
+        socat \
         fzf; \
     case "$KOROBAS_IMAGE" in *desktop*) \
         set -- "$@" torbrowser-launcher; \
@@ -75,7 +76,7 @@ RUN chmod 0755 /usr/local/bin/entrypoint.sh \
 
 WORKDIR /home/korobas
 
-EXPOSE 3389 22
+EXPOSE 3389 22 8000 8082
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 

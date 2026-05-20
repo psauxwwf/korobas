@@ -4,11 +4,16 @@ set -eu
 home_dir=/home/korobas
 dotfiles_dir="$home_dir/.dotfiles"
 bootstrap_marker="$home_dir/.local/state/korobas/mise-bootstrap-done"
+bind_address="${KOROBAS_BIND_ADDRESS:-172.19.100.2}"
 dotfiles_changed=false
 
 die() {
 	echo "$1" >&2
 	exit "${2:-1}"
+}
+
+log() {
+	printf '[entrypoint] %s\n' "$1" >&2
 }
 
 command_path() {
@@ -21,7 +26,7 @@ start_xrdp() {
 	image_name="${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}"
 	case "$image_name" in
 	*desktop*) ;;
-	*) return 0 ;;
+	*) return ;;
 	esac
 
 	xrdp_sesman_bin=$(command_path xrdp-sesman "xrdp binaries are missing in the image")
@@ -36,7 +41,9 @@ start_xrdp() {
 add_authorized_keys() {
 	local authorized_keys_file
 
-	[ -n "${KOROBAS_AUTHORIZED_KEYS:-}" ] || return 0
+	if [ -z "${KOROBAS_AUTHORIZED_KEYS:-}" ]; then
+		return
+	fi
 
 	install -d -m 0700 "$home_dir/.ssh"
 	authorized_keys_file="$home_dir/.ssh/authorized_keys"
@@ -64,16 +71,11 @@ start_ssh() {
 
 prepare_home() {
 	export HOME="$home_dir"
-
 	mkdir -p \
 		"$home_dir/.cache/mise" \
 		"$home_dir/.local/state/korobas" \
 		"$home_dir/.local/state/mise" \
 		"$home_dir/.local/share/mise"
-}
-
-current_dotfiles_revision() {
-	git -C "$dotfiles_dir" rev-parse HEAD 2>/dev/null || true
 }
 
 dotfiles_has_local_changes() {
@@ -96,7 +98,7 @@ sync_dotfiles() {
 		clone_dotfiles
 		dotfiles_changed=true
 	else
-		before_revision=$(current_dotfiles_revision)
+		before_revision=$(git -C "$dotfiles_dir" rev-parse HEAD 2>/dev/null || true)
 		if dotfiles_has_local_changes; then
 			printf '%s\n' "Stashing local dotfiles changes in $dotfiles_dir before update" >&2
 			stash_dotfiles_changes
@@ -104,7 +106,7 @@ sync_dotfiles() {
 		fi
 
 		git -C "$dotfiles_dir" pull --ff-only
-		after_revision=$(current_dotfiles_revision)
+		after_revision=$(git -C "$dotfiles_dir" rev-parse HEAD 2>/dev/null || true)
 		[ "$before_revision" = "$after_revision" ] || dotfiles_changed=true
 	fi
 
@@ -113,7 +115,7 @@ sync_dotfiles() {
 
 bootstrap_mise() {
 	if [ -f "$bootstrap_marker" ] && [ "$dotfiles_changed" != "true" ]; then
-		return 0
+		return
 	fi
 
 	mise install --jobs=1
@@ -121,22 +123,59 @@ bootstrap_mise() {
 	touch "$bootstrap_marker"
 }
 
+ensure_main_zellij_session() {
+	log "Ensuring Zellij session 'main'"
+
+	if ! zsh -lc 'command -v zellij >/dev/null 2>&1'; then
+		log "Zellij is not available in the user shell; skipping session startup"
+		return
+	fi
+
+	if KOROBAS_ZELLIJ_TOKEN="${KOROBAS_ZELLIJ_TOKEN:-}" zsh -lc '
+		cmd=(zellij attach --create-background)
+		[[ -n "$KOROBAS_ZELLIJ_TOKEN" ]] && cmd+=(--token "$KOROBAS_ZELLIJ_TOKEN")
+		cmd+=(main)
+		exec "${cmd[@]}" >/dev/null
+	'; then
+		log "Started Zellij session 'main'"
+		return
+	fi
+
+	log "Failed to start Zellij session 'main'"
+}
+
+start_zellij_proxy() {
+	if ! command -v socat >/dev/null 2>&1; then
+		log "socat is not available; skipping Zellij proxy"
+		return
+	fi
+
+	socat TCP-LISTEN:8082,bind="$bind_address",fork,reuseaddr TCP:127.0.0.1:8082 >/dev/null 2>&1 &
+	log "Started Zellij proxy on $bind_address:8082 -> 127.0.0.1:8082 (pid $!)"
+}
+
 start_opencode() {
-	local host port cors
+	local cors pid
 
-	[ "${KOROBAS_OPENCODE:-true}" = "true" ] || return 0
-
-	host="${OPENCODE_HOST:-0.0.0.0}"
-	port="${OPENCODE_PORT:-8000}"
 	cors="${OPENCODE_CORS:-}"
-	OPENCODE_HOST="$host" OPENCODE_PORT="$port" OPENCODE_CORS="$cors"
-	# zsh -lic '
-	zsh -lc '
+
+	if ! zsh -lc 'command -v opencode >/dev/null 2>&1'; then
+		die "opencode is not available in the user shell" 127
+	fi
+
+	if pgrep -f "opencode web --hostname=$bind_address --port=8000" >/dev/null 2>&1; then
+		log "Opencode already running on $bind_address:8000"
+		return
+	fi
+
+	OPENCODE_CORS="$cors" zsh -lc '
 			command -v opencode >/dev/null 2>&1 || exit 127
-			cmd=(opencode web "--hostname=$OPENCODE_HOST" "--port=$OPENCODE_PORT")
+			cmd=(opencode web "--hostname=$KOROBAS_BIND_ADDRESS" "--port=8000")
 			[[ -n "$OPENCODE_CORS" ]] && cmd+=("--cors=$OPENCODE_CORS")
 			exec "${cmd[@]}"
 		' &
+	pid=$!
+	log "Started opencode on $bind_address:8000 (pid $pid)"
 }
 
 run_as_korobas() {
@@ -154,6 +193,8 @@ run_user_phase() {
 	prepare_home
 	sync_dotfiles
 	bootstrap_mise
+	ensure_main_zellij_session
+	start_zellij_proxy
 	start_opencode
 
 	if [ -z "${1:-}" ]; then
