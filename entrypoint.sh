@@ -131,12 +131,7 @@ ensure_main_zellij_session() {
 		return
 	fi
 
-	if KOROBAS_ZELLIJ_TOKEN="${KOROBAS_ZELLIJ_TOKEN:-}" zsh -lc '
-		cmd=(zellij attach --create-background)
-		[[ -n "$KOROBAS_ZELLIJ_TOKEN" ]] && cmd+=(--token "$KOROBAS_ZELLIJ_TOKEN")
-		cmd+=(main)
-		exec "${cmd[@]}" >/dev/null
-	'; then
+	if zsh -lc 'exec zellij attach --create-background main >/dev/null'; then
 		log "Started Zellij session 'main'"
 		return
 	fi
@@ -155,7 +150,7 @@ start_zellij_proxy() {
 }
 
 start_opencode() {
-	local cors pid
+	local cors
 
 	cors="${OPENCODE_CORS:-}"
 
@@ -169,13 +164,12 @@ start_opencode() {
 	fi
 
 	OPENCODE_CORS="$cors" zsh -lc '
-			command -v opencode >/dev/null 2>&1 || exit 127
-			cmd=(opencode web "--hostname=$KOROBAS_BIND_ADDRESS" "--port=8000")
-			[[ -n "$OPENCODE_CORS" ]] && cmd+=("--cors=$OPENCODE_CORS")
-			exec "${cmd[@]}"
+			if [[ -n "$OPENCODE_CORS" ]]; then
+				exec opencode web "--hostname=$KOROBAS_BIND_ADDRESS" "--port=8000" "--cors=$OPENCODE_CORS"
+			fi
+			exec opencode web "--hostname=$KOROBAS_BIND_ADDRESS" "--port=8000"
 		' &
-	pid=$!
-	log "Started opencode on $bind_address:8000 (pid $pid)"
+	log "Started opencode on $bind_address:8000 (pid $!)"
 }
 
 run_as_korobas() {
