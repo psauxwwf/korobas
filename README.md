@@ -32,6 +32,10 @@ docker compose up -d
 KOROBAS_IMAGE=ghcr.io/psauxwwf/korobas-desktop:latest
 KOROBAS_AUTHORIZED_KEYS=
 KOROBAS_PASSWORD=korobas
+OPENCODE_CORS=http://127.0.0.1:8000,http://172.19.100.2:8000
+OPENCODE_SERVER_USERNAME=korobas
+OPENCODE_SERVER_PASSWORD=korobas
+OPENCODE_PROXY=false
 ```
 
 `.env` for core mode:
@@ -40,7 +44,21 @@ KOROBAS_PASSWORD=korobas
 KOROBAS_IMAGE=ghcr.io/psauxwwf/korobas-core:latest
 KOROBAS_AUTHORIZED_KEYS=
 KOROBAS_PASSWORD=korobas
+OPENCODE_CORS=http://127.0.0.1:8000,http://172.19.100.2:8000
+OPENCODE_SERVER_USERNAME=korobas
+OPENCODE_SERVER_PASSWORD=korobas
+OPENCODE_PROXY=false
 ```
+
+Environment variables used by `docker-compose.yaml`:
+
+- `KOROBAS_IMAGE`: selects the image variant, eg. `ghcr.io/psauxwwf/korobas-desktop:latest` or `ghcr.io/psauxwwf/korobas-core:latest`
+- `KOROBAS_AUTHORIZED_KEYS`: optional public keys to append to `/home/korobas/.ssh/authorized_keys`
+- `KOROBAS_PASSWORD`: password set for the `korobas` user
+- `OPENCODE_CORS`: comma-separated allowed origins passed to `opencode web --cors`
+- `OPENCODE_SERVER_USERNAME`: username for the opencode web server
+- `OPENCODE_SERVER_PASSWORD`: password for the opencode web server
+- `OPENCODE_PROXY`: enables or disables the opencode proxy mode
 
 ## Build And Up
 
