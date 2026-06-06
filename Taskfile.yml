@@ -1,48 +1,111 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: "3"
+
+vars:
+  ARCHIVE_PATH: korobas.tar.gz
+  CORE_IMAGE: ghcr.io/psauxwwf/korobas-core:latest
+  DESKTOP_IMAGE: ghcr.io/psauxwwf/korobas-desktop:latest
 
 env:
   COMPOSE_BAKE: true
 
 tasks:
-  build:
-    desc: build desktop and core images
+  image:build:
+    desc: Build both Korobas images.
+    summary: |
+      Build both published Korobas image variants.
     cmds:
-      - task: build:desktop
-      - task: build:core
+      - task: image:build:desktop
+      - task: image:build:core
 
-  push:
-    desc: build and push images
+  image:push:
+    desc: Build and push both Korobas images.
+    summary: |
+      Build both published Korobas image variants and push their
+      latest tags to GHCR.
     cmds:
-      - task: build
-      - docker push ghcr.io/psauxwwf/korobas-core:latest
-      - docker push ghcr.io/psauxwwf/korobas-desktop:latest
+      - task: image:build
+      - docker push {{.CORE_IMAGE}}
+      - docker push {{.DESKTOP_IMAGE}}
 
-  build:desktop:
-    desc: build desktop image with xrdp
+  image:publish:
+    desc: Build, tag, and push both Korobas images.
+    summary: |
+      Build both published Korobas image variants, tag them with the
+      requested version, and push both latest and versioned tags to GHCR.
+    preconditions:
+      - sh: test -n "${KOROBAS_VERSION:-}"
+        msg: KOROBAS_VERSION is required, e.g. KOROBAS_VERSION=v05.16.22 task image:publish
+    vars:
+      CORE_VERSION_IMAGE: ghcr.io/psauxwwf/korobas-core:{{.KOROBAS_VERSION}}
+      DESKTOP_VERSION_IMAGE: ghcr.io/psauxwwf/korobas-desktop:{{.KOROBAS_VERSION}}
+    cmds:
+      - docker pull {{.CORE_IMAGE}}
+      - docker pull {{.DESKTOP_IMAGE}}
+      - task: image:build
+      - docker image tag {{.CORE_IMAGE}} {{.CORE_VERSION_IMAGE}}
+      - docker image tag {{.DESKTOP_IMAGE}} {{.DESKTOP_VERSION_IMAGE}}
+      - docker push {{.CORE_IMAGE}}
+      - docker push {{.CORE_VERSION_IMAGE}}
+      - docker push {{.DESKTOP_IMAGE}}
+      - docker push {{.DESKTOP_VERSION_IMAGE}}
+
+  image:build:desktop:
+    desc: Build the desktop image with XRDP.
+    summary: |
+      Build the desktop Korobas image using the XRDP-enabled base image.
     env:
       KOROBAS_BASE_IMAGE: scottyhardy/docker-remote-desktop:latest
-      KOROBAS_IMAGE: ghcr.io/psauxwwf/korobas-desktop:latest
+      KOROBAS_IMAGE: "{{.DESKTOP_IMAGE}}"
     cmds:
       - docker compose build
 
-  build:core:
-    desc: build core image without xrdp
+  image:build:core:
+    desc: Build the core image without XRDP.
+    summary: |
+      Build the core Korobas image using the Debian base image.
     env:
       KOROBAS_BASE_IMAGE: debian:13
-      KOROBAS_IMAGE: ghcr.io/psauxwwf/korobas-core:latest
+      KOROBAS_IMAGE: "{{.CORE_IMAGE}}"
     cmds:
       - docker compose build
 
-  up:
-    desc: rebuild and up container
+  container:up:
+    desc: Rebuild and start the container.
+    summary: |
+      Rebuild the configured image and start the Compose service.
     cmds:
       - docker compose up --force-recreate --build
 
-  release:
-    desc: package and publish github release
+  package:archive:
+    desc: Build the release archive.
+    summary: |
+      Create the release tarball from docker-compose.yaml and the
+      bind-mounted korobas home directory.
     cmds:
-      - rm -f korobas.tar.gz
-      - tar -I 'pigz -9 -p$(nproc)' --exclude='korobas/.proxychains' --exclude='korobas/.local/share/opencode' --exclude='korobas/.env' --exclude='korobas/.cache' --exclude='korobas/.bash_history' -cf korobas.tar.gz docker-compose.yaml korobas
-      - |
-        TAG=$(date +v%m.%d.%H)
-        gh release create "$TAG" korobas.tar.gz
+      - rm -f {{.ARCHIVE_PATH}}
+      - tar -I 'pigz -9 -p$(nproc)' --exclude='korobas/.proxychains' --exclude='korobas/.local/share/opencode' --exclude='korobas/.env' --exclude='korobas/.cache' --exclude='korobas/.bash_history' -cf {{.ARCHIVE_PATH}} docker-compose.yaml korobas
+
+  release:create:
+    desc: Create a GitHub Release for the requested version.
+    summary: |
+      Create a GitHub Release for the requested version tag without
+      attaching any release assets.
+    preconditions:
+      - sh: test -n "${KOROBAS_VERSION:-}"
+        msg: KOROBAS_VERSION is required, e.g. KOROBAS_VERSION=v05.16.22 task release:create
+    cmds:
+      - gh release create "{{.KOROBAS_VERSION}}"
+
+  release:publish:
+    desc: Package the archive and publish it to GitHub Releases.
+    summary: |
+      Build the release archive and publish it as a GitHub Release
+      asset for the requested version tag.
+    preconditions:
+      - sh: test -n "${KOROBAS_VERSION:-}"
+        msg: KOROBAS_VERSION is required, e.g. KOROBAS_VERSION=v05.16.22 task release:publish
+    cmds:
+      - task: package:archive
+      - gh release create "{{.KOROBAS_VERSION}}" {{.ARCHIVE_PATH}}
