@@ -5,10 +5,10 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${KOROBAS_BASE_IMAGE:-scottyhardy/docker-remote-desktop:latest}
-        BUILDKIT_INLINE_CACHE: "1"
         KOROBAS_UID: 1000
         KOROBAS_GID: 1000
         KOROBAS_IMAGE: ${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
+        BUILDKIT_INLINE_CACHE: "1"
       cache_from:
         - type=registry,ref=${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
     container_name: korobas
