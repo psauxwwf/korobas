@@ -8,9 +8,10 @@ services:
         KOROBAS_UID: 1000
         KOROBAS_GID: 1000
         KOROBAS_IMAGE: ${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
-        BUILDKIT_INLINE_CACHE: "1"
       cache_from:
         - type=registry,ref=${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
+      cache_to:
+        - type=inline
     container_name: korobas
     hostname: korobas
     image: ${KOROBAS_IMAGE:-ghcr.io/psauxwwf/korobas-desktop:latest}
